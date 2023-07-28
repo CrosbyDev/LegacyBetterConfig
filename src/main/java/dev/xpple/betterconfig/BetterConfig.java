@@ -2,6 +2,7 @@ package dev.xpple.betterconfig;
 
 import dev.xpple.betterconfig.api.ModConfigBuilder;
 import dev.xpple.betterconfig.command.ConfigCommand;
+import dev.xpple.betterconfig.impl.BetterConfigImpl;
 import dev.xpple.betterconfig.test.Configs;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
@@ -21,7 +22,7 @@ public class BetterConfig implements ModInitializer {
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
     private static void registerCommands(CommandManager manager, boolean dedicated) {
-        new ConfigCommand().register(manager);
+        if (!BetterConfigImpl.getModConfigs().isEmpty()) new ConfigCommand().register(manager);
     }
 
     @Override
@@ -29,8 +30,7 @@ public class BetterConfig implements ModInitializer {
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) { // needs to run before DedicatedServerModInitializer
             CommandRegistrar.EVENT.register(BetterConfig::registerCommands);
 
-            new ModConfigBuilder("testmod", Configs.class)
-                    .build();
+            new ModConfigBuilder("testmod", Configs.class).build();
         }
     }
 }

@@ -3,6 +3,7 @@ package dev.xpple.betterconfig;
 import com.google.common.collect.ImmutableList;
 import dev.xpple.betterconfig.api.ModConfigBuilder;
 import dev.xpple.betterconfig.command.client.ConfigCommandClient;
+import dev.xpple.betterconfig.impl.BetterConfigImpl;
 import dev.xpple.betterconfig.test.Configs;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
@@ -20,10 +21,9 @@ public class BetterConfigClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        new ModConfigBuilder("testmodclient", Configs.class)
-                .build();
+        new ModConfigBuilder("testmodclient", Configs.class).build();
 
-        commandManager.registerCommand(new CommandWrapper(new ConfigCommandClient().register()));
+        if (!BetterConfigImpl.getModConfigs().isEmpty()) commandManager.registerCommand(new CommandWrapper(new ConfigCommandClient().register()));
     }
 
     public static void setAutocompleteQuery(String partialMessage) {
