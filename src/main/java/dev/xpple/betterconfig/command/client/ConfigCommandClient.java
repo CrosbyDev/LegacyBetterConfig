@@ -1,23 +1,19 @@
 package dev.xpple.betterconfig.command.client;
 
+import com.google.common.collect.ImmutableList;
 import dev.xpple.betterconfig.command.ConfigCommandHelper;
 import dev.xpple.betterconfig.impl.ModConfigImpl;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandManager;
-import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandMapping;
-import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
-import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandResult;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.*;
 import net.legacyfabric.fabric.api.permission.v1.PermissibleCommandSource;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.TranslatableText;
 
-import java.util.Optional;
-
 @Environment(EnvType.CLIENT)
 public class ConfigCommandClient extends ConfigCommandHelper<PermissibleCommandSource> {
-    public Optional<CommandMapping> register(CommandManager manager) {
-        return manager.register(this.create().build(), "cconfig");
+    public CommandMapping register() {
+        return new ImmutableCommandMapping(this.create().build(), "cconfig", ImmutableList.of());
     }
 
     @Override

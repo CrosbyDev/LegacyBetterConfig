@@ -26,12 +26,7 @@ public class BetterConfig implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
-            BetterConfigClient.clientInitializationCallback();
-
-            new ModConfigBuilder("testmodclient", Configs.class)
-                    .build();
-        } else {
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) { // needs to run before DedicatedServerModInitializer
             CommandRegistrar.EVENT.register(BetterConfig::registerCommands);
 
             new ModConfigBuilder("testmod", Configs.class)

@@ -1,24 +1,30 @@
 package dev.xpple.betterconfig;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
+import dev.xpple.betterconfig.api.ModConfigBuilder;
 import dev.xpple.betterconfig.command.client.ConfigCommandClient;
+import dev.xpple.betterconfig.test.Configs;
+import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.legacyfabric.fabric.api.command.v2.CommandRegistrar;
-import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandManager;
-import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandMapping;
 import net.legacyfabric.fabric.impl.command.CommandWrapper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.server.command.CommandRegistry;
 
 import java.util.List;
-import java.util.Optional;
 
 @Environment(EnvType.CLIENT)
-public class BetterConfigClient {
+public class BetterConfigClient implements ClientModInitializer {
     private static final CommandRegistry commandManager = new CommandRegistry();
     private static String autocompleteQuery = "";
+
+    @Override
+    public void onInitializeClient() {
+        new ModConfigBuilder("testmodclient", Configs.class)
+                .build();
+
+        commandManager.registerCommand(new CommandWrapper(new ConfigCommandClient().register()));
+    }
 
     public static void setAutocompleteQuery(String partialMessage) {
         autocompleteQuery = partialMessage;
@@ -34,16 +40,7 @@ public class BetterConfigClient {
         return ImmutableList.of();
     }
 
-    public static void clientInitializationCallback() {
-        CommandRegistrar.EVENT.register(BetterConfigClient::registerCommands);
-    }
-
     public static void executeCommand(String string) {
         commandManager.execute(MinecraftClient.getInstance().player, string);
-    }
-
-    private static void registerCommands(CommandManager manager, boolean dedicated) {
-        Optional<CommandMapping> mapping = new ConfigCommandClient().register(manager);
-        commandManager.registerCommand(new CommandWrapper(mapping.orElseThrow(() -> new RuntimeException("Could not register /cconfig commands."))));
     }
 }
