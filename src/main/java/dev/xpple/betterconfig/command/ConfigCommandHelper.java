@@ -4,8 +4,10 @@ import dev.xpple.betterconfig.api.Config;
 import dev.xpple.betterconfig.impl.BetterConfigImpl;
 import dev.xpple.betterconfig.impl.ModConfigImpl;
 import dev.xpple.betterconfig.util.CheckedFunction;
+import dev.xpple.betterconfig.util.PlainText;
 import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
 import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandResult;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.ArgumentParseException;
 import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.CommandContext;
 import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.CommandElement;
 import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.GenericArguments;
@@ -18,6 +20,7 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
     protected CommandSpec.Builder create() {
@@ -108,6 +111,12 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
             literals.forEach((key, value) -> modConfigRoot.child(value.build(), key));
             root.child(modConfigRoot.build(), modConfig.getModId());
         }
+
+        root.executor((source, args) -> {
+            String values = BetterConfigImpl.getModConfigs().keySet().stream().collect(Collectors.joining("|", "(", ")"));
+            throw new ArgumentParseException.WithUsage(new ArgumentParseException(new LiteralText("Invalid namespace"), null, 0), new PlainText(values));
+        });
+
         return root;
     }
 

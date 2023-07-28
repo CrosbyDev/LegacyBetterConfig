@@ -1,31 +1,28 @@
 {
   "schemaVersion": 1,
-  "id": "betterconfig",
+  "id": "legacybetterconfig",
   "version": "${version}",
-  "name": "BetterConfig",
+  "name": "LegacyBetterConfig",
   "description": "A very powerful and easy to use command based configuration library for servers and clients.",
   "authors": [
+    "Crosby"
+  ],
+  "contributors": [
     "xpple"
   ],
   "contact": {
-    "homepage": "https://xpple.dev/",
-    "sources": "https://github.com/xpple/BetterConfig/"
+    "sources": "https://github.com/RacoonDog/LegacyBetterConfig/"
   },
   "license": "LGPL-3.0-or-later",
   "icon": "assets/betterconfig/icon.png",
   "environment": "*",
   "entrypoints": {
-    "server": [
-      "dev.xpple.betterconfig.BetterConfig",
-      "dev.xpple.betterconfig.test.TestMod"
-    ],
-    "client": [
-      "dev.xpple.betterconfig.BetterConfigClient",
-      "dev.xpple.betterconfig.test.TestModClient"
+    "main": [
+      "dev.xpple.betterconfig.BetterConfig"
     ]
   },
   "mixins": [
-    "betterconfig.mixins.json"
+    "legacybetterconfig.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.17",

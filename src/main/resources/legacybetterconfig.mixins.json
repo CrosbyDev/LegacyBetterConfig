@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "dev.xpple.betterconfig.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ChatScreenMixin",
+    "ClientPlayerEntityMixin",
+    "ClientPlayNetworkHandlerMixin"
+  ]
+}
