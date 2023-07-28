@@ -8,6 +8,7 @@ import dev.xpple.betterconfig.test.Configs;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.loader.api.FabricLoader;
 import net.legacyfabric.fabric.impl.command.CommandWrapper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.server.command.CommandRegistry;
@@ -21,7 +22,7 @@ public class BetterConfigClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        new ModConfigBuilder("testmodclient", Configs.class).build();
+        if (FabricLoader.getInstance().isDevelopmentEnvironment()) new ModConfigBuilder("testmodclient", Configs.class).build();
 
         if (!BetterConfigImpl.getModConfigs().isEmpty()) commandManager.registerCommand(new CommandWrapper(new ConfigCommandClient().register()));
     }

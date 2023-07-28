@@ -30,7 +30,7 @@ public class BetterConfig implements ModInitializer {
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) { // needs to run before DedicatedServerModInitializer
             CommandRegistrar.EVENT.register(BetterConfig::registerCommands);
 
-            new ModConfigBuilder("testmod", Configs.class).build();
+            if (FabricLoader.getInstance().isDevelopmentEnvironment()) new ModConfigBuilder("testmod", Configs.class).build();
         }
     }
 }
