@@ -23,6 +23,7 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
     protected CommandSpec.Builder create() {
         CommandSpec.Builder root = CommandSpec.builder();
         for (ModConfigImpl modConfig : BetterConfigImpl.getModConfigs().values()) {
+            CommandSpec.Builder modConfigRoot = CommandSpec.builder();
             Map<String, CommandSpec.Builder> literals = new HashMap<>();
             for (String config : modConfig.getConfigs().keySet()) {
                 CommandSpec.Builder configLiteral = CommandSpec.builder();
@@ -104,7 +105,8 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
                     literals.get(config).child(subCommand, "remove");
                 }
             });
-            literals.values().forEach(literal -> root.child(literal.build(), modConfig.getModId()));
+            literals.forEach((key, value) -> modConfigRoot.child(value.build(), key));
+            root.child(modConfigRoot.build(), modConfig.getModId());
         }
         return root;
     }
