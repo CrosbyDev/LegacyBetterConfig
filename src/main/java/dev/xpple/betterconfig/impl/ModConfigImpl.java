@@ -2,18 +2,17 @@ package dev.xpple.betterconfig.impl;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.mojang.brigadier.arguments.*;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import dev.xpple.betterconfig.api.Config;
 import dev.xpple.betterconfig.api.ModConfig;
+import dev.xpple.betterconfig.command.ArgumentHelper;
 import dev.xpple.betterconfig.util.CheckedBiConsumer;
-import dev.xpple.betterconfig.util.CheckedBiFunction;
 import dev.xpple.betterconfig.util.CheckedConsumer;
-import net.minecraft.command.CommandSource;
-import net.minecraft.util.Pair;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.CommandElement;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.GenericArguments;
+import net.minecraft.text.Text;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -24,26 +23,25 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import static dev.xpple.betterconfig.BetterConfig.LOGGER;
 import static dev.xpple.betterconfig.BetterConfig.MOD_PATH;
 
 public class ModConfigImpl implements ModConfig {
 
-    private static final Map<Class<?>, Pair<?, ?>> defaultArguments = ImmutableMap.<Class<?>, Pair<?, ?>>builder()
-        .put(boolean.class, new Pair<>((Supplier<ArgumentType<Boolean>>) BoolArgumentType::bool, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Boolean, CommandSyntaxException>) BoolArgumentType::getBool))
-        .put(Boolean.class, new Pair<>((Supplier<ArgumentType<Boolean>>) BoolArgumentType::bool, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Boolean, CommandSyntaxException>) BoolArgumentType::getBool))
-        .put(double.class, new Pair<>((Supplier<ArgumentType<Double>>) DoubleArgumentType::doubleArg, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Double, CommandSyntaxException>) DoubleArgumentType::getDouble))
-        .put(Double.class, new Pair<>((Supplier<ArgumentType<Double>>) DoubleArgumentType::doubleArg, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Double, CommandSyntaxException>) DoubleArgumentType::getDouble))
-        .put(float.class, new Pair<>((Supplier<ArgumentType<Float>>) FloatArgumentType::floatArg, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Float, CommandSyntaxException>) FloatArgumentType::getFloat))
-        .put(Float.class, new Pair<>((Supplier<ArgumentType<Float>>) FloatArgumentType::floatArg, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Float, CommandSyntaxException>) FloatArgumentType::getFloat))
-        .put(int.class, new Pair<>((Supplier<ArgumentType<Integer>>) IntegerArgumentType::integer, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Integer, CommandSyntaxException>) IntegerArgumentType::getInteger))
-        .put(Integer.class, new Pair<>((Supplier<ArgumentType<Integer>>) IntegerArgumentType::integer, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Integer, CommandSyntaxException>) IntegerArgumentType::getInteger))
-        .put(long.class, new Pair<>((Supplier<ArgumentType<Long>>) LongArgumentType::longArg, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Long, CommandSyntaxException>) LongArgumentType::getLong))
-        .put(Long.class, new Pair<>((Supplier<ArgumentType<Long>>) LongArgumentType::longArg, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, Long, CommandSyntaxException>) LongArgumentType::getLong))
-        .put(String.class, new Pair<>((Supplier<ArgumentType<String>>) StringArgumentType::string, (CheckedBiFunction<CommandContext<? extends CommandSource>, String, String, CommandSyntaxException>) StringArgumentType::getString))
+    private static final Map<Class<?>, Function<Text, CommandElement>> defaultArguments = ImmutableMap.<Class<?>, Function<Text, CommandElement>>builder()
+        .put(boolean.class, GenericArguments::bool)
+        .put(Boolean.class, GenericArguments::bool)
+        .put(double.class, GenericArguments::doubleNum)
+        .put(Double.class, GenericArguments::doubleNum)
+        .put(float.class, ArgumentHelper::floatNum)
+        .put(Float.class, ArgumentHelper::floatNum)
+        .put(int.class, GenericArguments::integer)
+        .put(Integer.class, GenericArguments::integer)
+        .put(long.class, GenericArguments::longNum)
+        .put(Long.class, GenericArguments::longNum)
+        .put(String.class, GenericArguments::string)
         .build();
 
     private final String modId;
@@ -51,16 +49,14 @@ public class ModConfigImpl implements ModConfig {
 
     private final Gson gson;
     private final Gson inlineGson;
-    private final Map<Class<?>, Pair<?, ?>> arguments;
-    private final Map<Class<?>, Pair<?, ?>> suggestors;
+    private final Map<Class<?>, Function<Text, CommandElement>> arguments;
 
-    public ModConfigImpl(String modId, Class<?> configsClass, Gson gson, Map<Class<?>, Pair<?, ?>> arguments, Map<Class<?>, Pair<?, ?>> suggestors) {
+    public ModConfigImpl(String modId, Class<?> configsClass, Gson gson, Map<Class<?>, Function<Text, CommandElement>> arguments) {
         this.modId = modId;
         this.configsClass = configsClass;
-        this.gson = gson.newBuilder().setPrettyPrinting().create();
+        this.gson = new GsonBuilder().setPrettyPrinting().create();
         this.inlineGson = gson;
         this.arguments = arguments;
-        this.suggestors = suggestors;
     }
 
     @Override
@@ -77,14 +73,8 @@ public class ModConfigImpl implements ModConfig {
         return this.gson;
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> Pair<Supplier<ArgumentType<T>>, CheckedBiFunction<CommandContext<? extends CommandSource>, String, T, CommandSyntaxException>> getArgument(Class<T> type) {
-        return (Pair<Supplier<ArgumentType<T>>, CheckedBiFunction<CommandContext<? extends CommandSource>, String, T, CommandSyntaxException>>) this.arguments.getOrDefault(type, defaultArguments.get(type));
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> Pair<Supplier<SuggestionProvider<? extends CommandSource>>, CheckedBiFunction<CommandContext<? extends CommandSource>, String, T, CommandSyntaxException>> getSuggestor(Class<T> type) {
-        return (Pair<Supplier<SuggestionProvider<? extends CommandSource>>, CheckedBiFunction<CommandContext<? extends CommandSource>, String, T, CommandSyntaxException>>) this.suggestors.get(type);
+    public <T> Function<Text, CommandElement> getArgument(Class<T> type) {
+        return this.arguments.getOrDefault(type, defaultArguments.get(type));
     }
 
     @Override
@@ -130,8 +120,8 @@ public class ModConfigImpl implements ModConfig {
     }
 
     @Override
-    public void set(String config, Object value) throws CommandSyntaxException {
-        CheckedConsumer<Object, CommandSyntaxException> setter = this.setters.get(config);
+    public void set(String config, Object value) throws CommandNotFoundException {
+        CheckedConsumer<Object, CommandNotFoundException> setter = this.setters.get(config);
         if (setter == null) {
             throw new IllegalArgumentException();
         }
@@ -140,8 +130,8 @@ public class ModConfigImpl implements ModConfig {
     }
 
     @Override
-    public void add(String config, Object value) throws CommandSyntaxException {
-        CheckedConsumer<Object, CommandSyntaxException> adder = this.adders.get(config);
+    public void add(String config, Object value) throws CommandNotFoundException {
+        CheckedConsumer<Object, CommandNotFoundException> adder = this.adders.get(config);
         if (adder == null) {
             throw new IllegalArgumentException();
         }
@@ -150,8 +140,8 @@ public class ModConfigImpl implements ModConfig {
     }
 
     @Override
-    public void put(String config, Object key, Object value) throws CommandSyntaxException {
-        CheckedBiConsumer<Object, Object, CommandSyntaxException> putter = this.putters.get(config);
+    public void put(String config, Object key, Object value) throws CommandNotFoundException {
+        CheckedBiConsumer<Object, Object, CommandNotFoundException> putter = this.putters.get(config);
         if (putter == null) {
             throw new IllegalArgumentException();
         }
@@ -160,8 +150,8 @@ public class ModConfigImpl implements ModConfig {
     }
 
     @Override
-    public void remove(String config, Object value) throws CommandSyntaxException {
-        CheckedConsumer<Object, CommandSyntaxException> remover = this.removers.get(config);
+    public void remove(String config, Object value) throws CommandNotFoundException {
+        CheckedConsumer<Object, CommandNotFoundException> remover = this.removers.get(config);
         if (remover == null) {
             throw new IllegalArgumentException();
         }
@@ -226,24 +216,20 @@ public class ModConfigImpl implements ModConfig {
         return this.comments;
     }
 
-    public Map<String, CheckedConsumer<Object, CommandSyntaxException>> getSetters() {
+    public Map<String, CheckedConsumer<Object, CommandNotFoundException>> getSetters() {
         return this.setters;
     }
 
-    public Map<String, CheckedConsumer<Object, CommandSyntaxException>> getAdders() {
+    public Map<String, CheckedConsumer<Object, CommandNotFoundException>> getAdders() {
         return this.adders;
     }
 
-    public Map<String, CheckedBiConsumer<Object, Object, CommandSyntaxException>> getPutters() {
+    public Map<String, CheckedBiConsumer<Object, Object, CommandNotFoundException>> getPutters() {
         return this.putters;
     }
 
-    public Map<String, CheckedConsumer<Object, CommandSyntaxException>> getRemovers() {
+    public Map<String, CheckedConsumer<Object, CommandNotFoundException>> getRemovers() {
         return this.removers;
-    }
-
-    public Map<String, Predicate<CommandSource>> getConditions() {
-        return this.conditions;
     }
 
     public Map<String, Config> getAnnotations() {
@@ -253,10 +239,9 @@ public class ModConfigImpl implements ModConfig {
     private final Map<String, Field> configs = new HashMap<>();
     private final Map<String, Object> defaults = new HashMap<>();
     private final Map<String, String> comments = new HashMap<>();
-    private final Map<String, CheckedConsumer<Object, CommandSyntaxException>> setters = new HashMap<>();
-    private final Map<String, CheckedConsumer<Object, CommandSyntaxException>> adders = new HashMap<>();
-    private final Map<String, CheckedBiConsumer<Object, Object, CommandSyntaxException>> putters = new HashMap<>();
-    private final Map<String, CheckedConsumer<Object, CommandSyntaxException>> removers = new HashMap<>();
-    private final Map<String, Predicate<CommandSource>> conditions = new HashMap<>();
+    private final Map<String, CheckedConsumer<Object, CommandNotFoundException>> setters = new HashMap<>();
+    private final Map<String, CheckedConsumer<Object, CommandNotFoundException>> adders = new HashMap<>();
+    private final Map<String, CheckedBiConsumer<Object, Object, CommandNotFoundException>> putters = new HashMap<>();
+    private final Map<String, CheckedConsumer<Object, CommandNotFoundException>> removers = new HashMap<>();
     private final Map<String, Config> annotations = new HashMap<>();
 }

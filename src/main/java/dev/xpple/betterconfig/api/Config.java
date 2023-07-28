@@ -1,5 +1,6 @@
 package dev.xpple.betterconfig.api;
 
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.lang.annotation.ElementType;
@@ -33,7 +34,7 @@ import java.lang.annotation.Target;
  *     }
  *     }
  *     </pre>
- *     This method can be private and is allowed to throw a {@link com.mojang.brigadier.exceptions.CommandSyntaxException},
+ *     This method can be private and is allowed to throw a {@link CommandNotFoundException},
  *     which will be caught and dealt with as usual. <br />
  *     If an attribute equals the empty string (the default value), the Java built-in
  *     method will be used. For instance, the method {@link java.util.Collection#add} for
@@ -58,20 +59,6 @@ import java.lang.annotation.Target;
  *     that is, to disable loading and saving from a config file, set {@code temporary} to
  *     {@code true}.
  * </p>
- *
- * <p>
- *     To make a configuration's visibility conditional on the {@code CommandSource}, use {@link Config#condition()}.
- *     The {@code CommandSource} parameter is optional.
- *     <pre>
- *     {@code
- *     @Config(condition = "myCondition")
- *     public static String myConfig = "";
- *     public static boolean myCondition(CommandSource source) {
- *         return Boolean.getBoolean("enableMyConfig");
- *     }
- *     }
- *     </pre>
- * </p>
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -85,7 +72,6 @@ public @interface Config {
 
     boolean readOnly() default false;
     boolean temporary() default false;
-    String condition() default "";
 
     @Target({})
     @interface Setter {

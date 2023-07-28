@@ -1,13 +1,10 @@
 package dev.xpple.betterconfig;
 
-import com.mojang.brigadier.CommandDispatcher;
 import dev.xpple.betterconfig.command.ConfigCommand;
 import net.fabricmc.api.DedicatedServerModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
+import net.legacyfabric.fabric.api.command.v2.CommandRegistrar;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,10 +19,10 @@ public class BetterConfig implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        CommandRegistrationCallback.EVENT.register(BetterConfig::registerCommands);
+        CommandRegistrar.EVENT.register(BetterConfig::registerCommands);
     }
 
-    private static void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess, CommandManager.RegistrationEnvironment environment) {
-        new ConfigCommand().register(dispatcher);
+    private static void registerCommands(CommandManager manager, boolean dedicated) {
+        new ConfigCommand().register(manager);
     }
 }

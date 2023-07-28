@@ -1,6 +1,6 @@
 package dev.xpple.betterconfig.api;
 
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
 
 import java.nio.file.Path;
 
@@ -49,18 +49,18 @@ public interface ModConfig {
      * @param config the config's key
      * @param value the new value
      * @throws IllegalArgumentException when there is no setter for this config
-     * @throws CommandSyntaxException when a custom setter has failed to execute
+     * @throws CommandNotFoundException when a custom setter has failed to execute
      */
-    void set(String config, Object value) throws CommandSyntaxException;
+    void set(String config, Object value) throws CommandNotFoundException;
 
     /**
      * Add a value to the config associated with this config key.
      * @param config the config's key
      * @param value the value
      * @throws IllegalArgumentException when there is no adder for this config
-     * @throws CommandSyntaxException when a custom adder has failed to execute
+     * @throws CommandNotFoundException when a custom adder has failed to execute
      */
-    void add(String config, Object value) throws CommandSyntaxException;
+    void add(String config, Object value) throws CommandNotFoundException;
 
     /**
      * Put a new mapping to the config associated with this config key.
@@ -68,18 +68,18 @@ public interface ModConfig {
      * @param key the mapping's key
      * @param value the mapping's value
      * @throws IllegalArgumentException when there is no putter for this config
-     * @throws CommandSyntaxException when a custom putter has failed to execute
+     * @throws CommandNotFoundException when a custom putter has failed to execute
      */
-    void put(String config, Object key, Object value) throws CommandSyntaxException;
+    void put(String config, Object key, Object value) throws CommandNotFoundException;
 
     /**
      * Remove a value from the config associated with this config key.
      * @param config the config's key
      * @param value the value
      * @throws IllegalArgumentException when there is no remover for this config
-     * @throws CommandSyntaxException when a custom remover has failed to execute
+     * @throws CommandNotFoundException when a custom remover has failed to execute
      */
-    void remove(String config, Object value) throws CommandSyntaxException;
+    void remove(String config, Object value) throws CommandNotFoundException;
 
     /**
      * Reset all the {@link Config#temporary()} configs.

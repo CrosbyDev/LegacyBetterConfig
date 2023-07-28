@@ -2,9 +2,8 @@ package dev.xpple.betterconfig.impl;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.xpple.betterconfig.api.Config;
-import net.minecraft.command.CommandSource;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -21,7 +20,7 @@ public class BetterConfigInternals {
     public static void init(ModConfigImpl modConfig) {
         JsonObject root;
         try (BufferedReader reader = Files.newBufferedReader(modConfig.getConfigsPath())) {
-            root = JsonParser.parseReader(reader).getAsJsonObject();
+            root = new JsonParser().parse(reader).getAsJsonObject();
         } catch (IOException e) {
             root = new JsonObject();
             LOGGER.warn("Could not read config file, default values will be used.");
@@ -61,50 +60,6 @@ public class BetterConfigInternals {
                     }
                 } catch (Exception e) {
                     throw new AssertionError(e);
-                }
-            }
-
-            if (annotation.condition().isEmpty()) {
-                modConfig.getConditions().put(fieldName, source -> true);
-            } else {
-                Method predicateMethod;
-                boolean hasParameter = false;
-                try {
-                    predicateMethod = modConfig.getConfigsClass().getDeclaredMethod(annotation.condition());
-                } catch (ReflectiveOperationException e) {
-                    hasParameter = true;
-                    try {
-                        predicateMethod = modConfig.getConfigsClass().getDeclaredMethod(annotation.condition(), CommandSource.class);
-                    } catch (ReflectiveOperationException e1) {
-                        throw new AssertionError(e1);
-                    }
-                }
-                if (predicateMethod.getReturnType() != boolean.class) {
-                    throw new AssertionError("Condition method '" + annotation.condition() + "' does not return boolean");
-                }
-                if (!Modifier.isStatic(predicateMethod.getModifiers())) {
-                    throw new AssertionError("Condition method '" + annotation.condition() + "' is not static");
-                }
-                predicateMethod.setAccessible(true);
-
-                Method predicateMethod_f = predicateMethod;
-
-                if (hasParameter) {
-                    modConfig.getConditions().put(fieldName, source -> {
-                        try {
-                            return (Boolean) predicateMethod_f.invoke(null, source);
-                        } catch (ReflectiveOperationException e) {
-                            throw new AssertionError(e);
-                        }
-                    });
-                } else {
-                    modConfig.getConditions().put(fieldName, source -> {
-                        try {
-                            return (Boolean) predicateMethod_f.invoke(null);
-                        } catch (ReflectiveOperationException e) {
-                            throw new AssertionError(e);
-                        }
-                    });
                 }
             }
 
@@ -165,8 +120,8 @@ public class BetterConfigInternals {
                 try {
                     adderMethod.invoke(null, value);
                 } catch (ReflectiveOperationException e) {
-                    if (e.getCause() instanceof CommandSyntaxException commandSyntaxException) {
-                        throw commandSyntaxException;
+                    if (e.getCause() instanceof CommandNotFoundException) {
+                        throw (CommandNotFoundException) e.getCause();
                     }
                     throw new AssertionError(e);
                 }
@@ -203,8 +158,8 @@ public class BetterConfigInternals {
                 try {
                     removerMethod.invoke(null, value);
                 } catch (ReflectiveOperationException e) {
-                    if (e.getCause() instanceof CommandSyntaxException commandSyntaxException) {
-                        throw commandSyntaxException;
+                    if (e.getCause() instanceof CommandNotFoundException) {
+                        throw (CommandNotFoundException) e.getCause();
                     }
                     throw new AssertionError(e);
                 }
@@ -232,8 +187,8 @@ public class BetterConfigInternals {
                 try {
                     adderMethod.invoke(null, key);
                 } catch (ReflectiveOperationException e) {
-                    if (e.getCause() instanceof CommandSyntaxException commandSyntaxException) {
-                        throw commandSyntaxException;
+                    if (e.getCause() instanceof CommandNotFoundException) {
+                        throw (CommandNotFoundException) e.getCause();
                     }
                     throw new AssertionError(e);
                 }
@@ -271,8 +226,8 @@ public class BetterConfigInternals {
                 try {
                     putterMethod.invoke(null, key, value);
                 } catch (ReflectiveOperationException e) {
-                    if (e.getCause() instanceof CommandSyntaxException commandSyntaxException) {
-                        throw commandSyntaxException;
+                    if (e.getCause() instanceof CommandNotFoundException) {
+                        throw (CommandNotFoundException) e.getCause();
                     }
                     throw new AssertionError(e);
                 }
@@ -309,8 +264,8 @@ public class BetterConfigInternals {
                 try {
                     removerMethod.invoke(null, key);
                 } catch (ReflectiveOperationException e) {
-                    if (e.getCause() instanceof CommandSyntaxException commandSyntaxException) {
-                        throw commandSyntaxException;
+                    if (e.getCause() instanceof CommandNotFoundException) {
+                        throw (CommandNotFoundException) e.getCause();
                     }
                     throw new AssertionError(e);
                 }
@@ -345,8 +300,8 @@ public class BetterConfigInternals {
                 try {
                     setterMethod.invoke(null, value);
                 } catch (ReflectiveOperationException e) {
-                    if (e.getCause() instanceof CommandSyntaxException commandSyntaxException) {
-                        throw commandSyntaxException;
+                    if (e.getCause() instanceof CommandNotFoundException) {
+                        throw (CommandNotFoundException) e.getCause();
                     }
                     throw new AssertionError(e);
                 }

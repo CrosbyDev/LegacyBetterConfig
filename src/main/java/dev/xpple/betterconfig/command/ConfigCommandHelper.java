@@ -1,94 +1,64 @@
 package dev.xpple.betterconfig.command;
 
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import dev.xpple.betterconfig.api.Config;
-import dev.xpple.betterconfig.command.suggestion.EnumSuggestionProvider;
 import dev.xpple.betterconfig.impl.BetterConfigImpl;
 import dev.xpple.betterconfig.impl.ModConfigImpl;
 import dev.xpple.betterconfig.util.CheckedFunction;
-import net.minecraft.command.CommandSource;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandResult;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.CommandContext;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.CommandElement;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.args.GenericArguments;
+import net.legacyfabric.fabric.api.command.v2.lib.sponge.spec.CommandSpec;
+import net.legacyfabric.fabric.api.permission.v1.PermissibleCommandSource;
+import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Predicate;
+import java.util.function.Function;
 
-import static com.mojang.brigadier.arguments.StringArgumentType.*;
-
-public abstract class ConfigCommandHelper<S extends CommandSource>  {
-
-    private static final DynamicCommandExceptionType INVALID_ENUM_EXCEPTION = new DynamicCommandExceptionType(value -> Text.translatable("argument.enum.invalid", value));
-
-    protected LiteralArgumentBuilder<S> create(String rootLiteral) {
-        LiteralArgumentBuilder<S> root = LiteralArgumentBuilder.literal(rootLiteral);
+public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
+    protected CommandSpec.Builder create() {
+        CommandSpec.Builder root = CommandSpec.builder();
         for (ModConfigImpl modConfig : BetterConfigImpl.getModConfigs().values()) {
-            Map<String, LiteralArgumentBuilder<S>> literals = new HashMap<>();
+            Map<String, CommandSpec.Builder> literals = new HashMap<>();
             for (String config : modConfig.getConfigs().keySet()) {
-                @SuppressWarnings("unchecked")
-                Predicate<S> condition = (Predicate<S>) modConfig.getConditions().get(config);
-                LiteralArgumentBuilder<S> configLiteral = LiteralArgumentBuilder.<S>literal(config).requires(condition);
+                CommandSpec.Builder configLiteral = CommandSpec.builder();
                 literals.put(config, configLiteral);
 
-                configLiteral.then(LiteralArgumentBuilder.<S>literal("get").executes(ctx -> get(ctx.getSource(), modConfig, config)));
-                configLiteral.then(LiteralArgumentBuilder.<S>literal("reset").executes(ctx -> reset(ctx.getSource(), modConfig, config)));
+                configLiteral.child(CommandSpec.builder().executor((source, args) -> get(source, modConfig, config)).build(), "get");
+                configLiteral.child(CommandSpec.builder().executor((source, args) -> reset(source, modConfig, config)).build(), "reset");
             }
 
-            modConfig.getComments().forEach((config, comment) -> literals.get(config).then(LiteralArgumentBuilder.<S>literal("comment").executes(ctx -> comment(ctx.getSource(), config, comment))));
+            modConfig.getComments().forEach((config, comment) -> literals.get(config).child(CommandSpec.builder().executor((source, args) -> comment(source, config, comment)).build(), "comment"));
             modConfig.getSetters().keySet().forEach(config -> {
                 Config annotation = modConfig.getAnnotations().get(config);
                 Config.Setter setter = annotation.setter();
                 Class<?> type = setter.type() == Config.EMPTY.class ? modConfig.getType(config) : setter.type();
-                var argumentPair = modConfig.getArgument(type);
-                var suggestorPair = modConfig.getSuggestor(type);
+                Function<Text, CommandElement> argumentFactory = modConfig.getArgument(type);
                 if (type.isEnum()) {
                     //noinspection rawtypes, unchecked
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", string()).suggests(new EnumSuggestionProvider<>((Class) type));
-                    subCommand.executes(ctx -> {
-                        String value = getString(ctx, "value");
-                        return set(ctx.getSource(), modConfig, config, Arrays.stream(type.getEnumConstants()).filter(c -> c.toString().equals(value)).findAny().orElseThrow(() -> INVALID_ENUM_EXCEPTION.create(value)));
-                    });
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("set").then(subCommand));
-                } else if (argumentPair != null) {
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", argumentPair.getLeft().get());
-                    subCommand.executes(ctx -> set(ctx.getSource(), modConfig, config, argumentPair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("set").then(subCommand));
-                } else if (suggestorPair != null) {
-                    RequiredArgumentBuilder<S, String> subCommand = RequiredArgumentBuilder.argument("value", greedyString());
-                    //noinspection unchecked
-                    subCommand.suggests((SuggestionProvider<S>) suggestorPair.getLeft().get()).executes(ctx -> set(ctx.getSource(), modConfig, config, suggestorPair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("set").then(subCommand));
+                    CommandSpec subCommand = CommandSpec.builder().arguments(GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) type)).executor((source, args) -> set(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "set");
+                } else if (argumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> set(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "set");
                 }
             });
             modConfig.getAdders().keySet().forEach(config -> {
                 Config annotation = modConfig.getAnnotations().get(config);
                 Config.Adder adder = annotation.adder();
                 Class<?> type = adder.type() == Config.EMPTY.class ? (Class<?>) modConfig.getParameterTypes(config)[0] : adder.type();
-                var argumentPair = modConfig.getArgument(type);
-                var suggestorPair = modConfig.getSuggestor(type);
+                Function<Text, CommandElement> argumentFactory = modConfig.getArgument(type);
                 if (type.isEnum()) {
                     //noinspection rawtypes, unchecked
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", string()).suggests(new EnumSuggestionProvider<>((Class) type));
-                    subCommand.executes(ctx -> {
-                        String value = getString(ctx, "value");
-                        return add(ctx.getSource(), modConfig, config, Arrays.stream(type.getEnumConstants()).filter(c -> c.toString().equals(value)).findAny().orElseThrow(() -> INVALID_ENUM_EXCEPTION.create(value)));
-                    });
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("add").then(subCommand));
-                } else if (argumentPair != null) {
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", argumentPair.getLeft().get());
-                    subCommand.executes(ctx -> add(ctx.getSource(), modConfig, config, argumentPair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("add").then(subCommand));
-                } else if (suggestorPair != null) {
-                    RequiredArgumentBuilder<S, String> subCommand = RequiredArgumentBuilder.argument("value", greedyString());
-                    //noinspection unchecked
-                    subCommand.suggests((SuggestionProvider<S>) suggestorPair.getLeft().get()).executes(ctx -> add(ctx.getSource(), modConfig, config, suggestorPair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("add").then(subCommand));
+                    CommandSpec subCommand = CommandSpec.builder().arguments(GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) type)).executor((source, args) -> add(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "add");
+                } else if (argumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> add(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "add");
                 }
             });
             modConfig.getPutters().keySet().forEach(config -> {
@@ -96,91 +66,60 @@ public abstract class ConfigCommandHelper<S extends CommandSource>  {
                 Config.Putter putter = annotation.putter();
                 Type[] types = modConfig.getParameterTypes(config);
                 Class<?> keyType = putter.keyType() == Config.EMPTY.class ? (Class<?>) types[0] : putter.keyType();
-                RequiredArgumentBuilder<S, ?> subCommand;
-                CheckedFunction<CommandContext<S>, ?, CommandSyntaxException> getKey;
-                var argumentKeyPair = modConfig.getArgument(keyType);
-                var suggestorKeyPair = modConfig.getSuggestor(keyType);
+                CommandElement keyArgument;
+                CheckedFunction<CommandContext, ?, CommandNotFoundException> getKey;
+                Function<Text, CommandElement> keyArgumentFactory = modConfig.getArgument(keyType);
                 if (keyType.isEnum()) {
                     //noinspection rawtypes, unchecked
-                    subCommand = RequiredArgumentBuilder.argument("key", string()).suggests(new EnumSuggestionProvider<>((Class) keyType));
-                    getKey = ctx -> {
-                        String value = getString(ctx, "key");
-                        return Arrays.stream(keyType.getEnumConstants()).filter(c -> c.toString().equals(value)).findAny().orElseThrow(() -> INVALID_ENUM_EXCEPTION.create(value));
-                    };
-                } else if (argumentKeyPair != null) {
-                    subCommand = RequiredArgumentBuilder.argument("key", argumentKeyPair.getLeft().get());
-                    getKey = ctx -> argumentKeyPair.getRight().apply(ctx, "key");
-                } else if (suggestorKeyPair != null) {
-                    subCommand = RequiredArgumentBuilder.argument("key", string());
-                    //noinspection unchecked
-                    subCommand.suggests((SuggestionProvider<S>) suggestorKeyPair.getLeft().get());
-                    getKey = ctx -> suggestorKeyPair.getRight().apply(ctx, "key");
+                    keyArgument = GenericArguments.enumValue(new LiteralText("key"), (Class<? extends Enum>) keyType);
+                    getKey = args -> args.requireOne("key");
+                } else if (keyArgumentFactory != null) {
+                    keyArgument = keyArgumentFactory.apply(new LiteralText("key"));
+                    getKey = args -> args.requireOne("key");
                 } else {
                     return;
                 }
                 Class<?> valueType = putter.valueType() == Config.EMPTY.class ? (Class<?>) types[1] : putter.valueType();
-                var argumentValuePair = modConfig.getArgument(valueType);
-                var suggestorValuePair = modConfig.getSuggestor(valueType);
+                Function<Text, CommandElement> valueArgumentFactory = modConfig.getArgument(valueType);
                 if (valueType.isEnum()) {
                     //noinspection rawtypes, unchecked
-                    RequiredArgumentBuilder<S, ?> subSubCommand = RequiredArgumentBuilder.argument("value", string()).suggests(new EnumSuggestionProvider<>((Class) valueType));
-                    subCommand.executes(ctx -> {
-                        String value = getString(ctx, "value");
-                        return put(ctx.getSource(), modConfig, config, getKey.apply(ctx), Arrays.stream(valueType.getEnumConstants()).filter(c -> c.toString().equals(value)).findAny().orElseThrow(() -> INVALID_ENUM_EXCEPTION.create(value)));
-                    });
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("put").then(subCommand.then(subSubCommand)));
-                } else if (argumentValuePair != null) {
-                    RequiredArgumentBuilder<S, ?> subSubCommand = RequiredArgumentBuilder.argument("value", argumentValuePair.getLeft().get());
-                    subSubCommand.executes(ctx -> put(ctx.getSource(), modConfig, config, getKey.apply(ctx), argumentValuePair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("put").then(subCommand.then(subSubCommand)));
-                } else if (suggestorValuePair != null) {
-                    RequiredArgumentBuilder<S, ?> subSubCommand = RequiredArgumentBuilder.argument("value", greedyString());
-                    //noinspection unchecked
-                    subSubCommand.suggests((SuggestionProvider<S>) suggestorValuePair.getLeft().get()).executes(ctx -> put(ctx.getSource(), modConfig, config, getKey.apply(ctx), suggestorValuePair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("put").then(subCommand.then(subSubCommand)));
+                    CommandSpec subCommand = CommandSpec.builder().arguments(keyArgument, GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) valueType)).executor((source, args) -> put(source, modConfig, config, getKey.apply(args), args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "put");
+                } else if (valueArgumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(keyArgument, valueArgumentFactory.apply(new LiteralText("value"))).executor((source, args) -> put(source, modConfig, config, getKey.apply(args), args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "put");
                 }
             });
             modConfig.getRemovers().keySet().forEach(config -> {
                 Config annotation = modConfig.getAnnotations().get(config);
                 Config.Remover remover = annotation.remover();
                 Class<?> type = remover.type() == Config.EMPTY.class ? (Class<?>) modConfig.getParameterTypes(config)[0] : remover.type();
-                var argumentPair = modConfig.getArgument(type);
-                var suggestorPair = modConfig.getSuggestor(type);
+                Function<Text, CommandElement> argumentFactory = modConfig.getArgument(type);
                 if (type.isEnum()) {
                     //noinspection rawtypes, unchecked
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", string()).suggests(new EnumSuggestionProvider<>((Class) type));
-                    subCommand.executes(ctx -> {
-                        String value = getString(ctx, "value");
-                        return remove(ctx.getSource(), modConfig, config, Arrays.stream(type.getEnumConstants()).filter(c -> c.toString().equals(value)).findAny().orElseThrow(() -> INVALID_ENUM_EXCEPTION.create(value)));
-                    });
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("remove").then(subCommand));
-                } else if (argumentPair != null) {
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", argumentPair.getLeft().get());
-                    subCommand.executes(ctx -> remove(ctx.getSource(), modConfig, config, argumentPair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("remove").then(subCommand));
-                } else if (suggestorPair != null) {
-                    RequiredArgumentBuilder<S, ?> subCommand = RequiredArgumentBuilder.argument("value", greedyString());
-                    //noinspection unchecked
-                    subCommand.suggests((SuggestionProvider<S>) suggestorPair.getLeft().get()).executes(ctx -> remove(ctx.getSource(), modConfig, config, suggestorPair.getRight().apply(ctx, "value")));
-                    literals.get(config).then(LiteralArgumentBuilder.<S>literal("remove").then(subCommand));
+                    CommandSpec subCommand = CommandSpec.builder().arguments(GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) type)).executor((source, args) -> remove(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "remove");
+                } else if (argumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> remove(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "remove");
                 }
             });
-            literals.values().forEach(literal -> root.then(LiteralArgumentBuilder.<S>literal(modConfig.getModId()).then(literal)));
+            literals.values().forEach(literal -> root.child(literal.build(), modConfig.getModId()));
         }
         return root;
     }
 
-    protected abstract int comment(S source, String config, String comment);
+    protected abstract CommandResult comment(PermissibleCommandSource source, String config, String comment);
 
-    protected abstract int get(S source, ModConfigImpl modConfig, String config);
+    protected abstract CommandResult get(PermissibleCommandSource source, ModConfigImpl modConfig, String config);
 
-    protected abstract int reset(S source, ModConfigImpl modConfig, String config);
+    protected abstract CommandResult reset(PermissibleCommandSource source, ModConfigImpl modConfig, String config);
 
-    protected abstract int set(S source, ModConfigImpl modConfig, String config, Object value) throws CommandSyntaxException;
+    protected abstract CommandResult set(PermissibleCommandSource source, ModConfigImpl modConfig, String config, Object value) throws CommandNotFoundException;
 
-    protected abstract int add(S source, ModConfigImpl modConfig, String config, Object value) throws CommandSyntaxException;
+    protected abstract CommandResult add(PermissibleCommandSource source, ModConfigImpl modConfig, String config, Object value) throws CommandNotFoundException;
 
-    protected abstract int put(S source, ModConfigImpl modConfig, String config, Object key, Object value) throws CommandSyntaxException;
+    protected abstract CommandResult put(PermissibleCommandSource source, ModConfigImpl modConfig, String config, Object key, Object value) throws CommandNotFoundException;
 
-    protected abstract int remove(S source, ModConfigImpl modConfig, String config, Object value) throws CommandSyntaxException;
+    protected abstract CommandResult remove(PermissibleCommandSource source, ModConfigImpl modConfig, String config, Object value) throws CommandNotFoundException;
 }
