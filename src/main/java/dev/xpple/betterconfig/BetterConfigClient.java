@@ -25,7 +25,12 @@ public class BetterConfigClient {
     }
 
     public static List<String> getCommandSuggestions() {
-        if (autocompleteQuery.startsWith("/")) return commandManager.getCompletions(MinecraftClient.getInstance().player, autocompleteQuery.substring(1), null);
+        if (autocompleteQuery.startsWith("/")) {
+            List<String> list = commandManager.getCompletions(MinecraftClient.getInstance().player, autocompleteQuery.substring(1), null);
+            if (list == null) return ImmutableList.of();
+            if (!autocompleteQuery.contains(" ")) list.replaceAll(s -> "/" + s);
+            return list;
+        }
         return ImmutableList.of();
     }
 
