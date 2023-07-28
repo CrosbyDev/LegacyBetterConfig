@@ -1,4 +1,4 @@
-package dev.xpple.betterconfig;
+package dev.xpple.betterconfig.test;
 
 public enum TestEnum {
     ONE,

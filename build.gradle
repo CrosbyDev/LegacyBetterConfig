@@ -10,38 +10,6 @@ base {
 	archivesName = project.archives_base_name
 }
 
-sourceSets {
-	testmod {
-		compileClasspath += main.compileClasspath
-		runtimeClasspath += main.runtimeClasspath
-	}
-}
-
-loom {
-	mods {
-		betterconfig {
-			sourceSet sourceSets.main
-		}
-		testmod {
-			sourceSet sourceSets.main
-			sourceSet sourceSets.testmod
-		}
-	}
-
-	runs {
-		testmodClient {
-			client()
-			name = "Test Mod Client"
-			source sourceSets.testmod
-		}
-		testmodServer {
-			server()
-			name = "Test Mod Server"
-			source sourceSets.testmod
-		}
-	}
-}
-
 repositories {
 	// Add repositories to retrieve artifacts from in here.
 	// You should only use this when depending on other mods because

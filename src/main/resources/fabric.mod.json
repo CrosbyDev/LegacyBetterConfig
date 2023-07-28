@@ -16,24 +16,22 @@
   "environment": "*",
   "entrypoints": {
     "server": [
-      "dev.xpple.betterconfig.BetterConfig"
+      "dev.xpple.betterconfig.BetterConfig",
+      "dev.xpple.betterconfig.test.TestMod"
     ],
     "client": [
-      "dev.xpple.betterconfig.BetterConfigClient"
+      "dev.xpple.betterconfig.BetterConfigClient",
+      "dev.xpple.betterconfig.test.TestModClient"
     ]
   },
   "mixins": [
-    "betterconfig.mixins.json",
-    {
-      "config": "betterconfig.mixins.client.json",
-      "environment": "client"
-    }
+    "betterconfig.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.17",
-    "minecraft": "1.20.x",
-    "java": ">=17",
-    "fabric-api": "*"
+    "minecraft": "1.8.9",
+    "java": ">=8",
+    "legacy-fabric-api": "*"
   },
   "custom": {
     "modmenu": {
