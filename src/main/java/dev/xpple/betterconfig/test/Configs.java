@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import dev.xpple.betterconfig.api.Config;
 import net.legacyfabric.fabric.api.command.v2.lib.sponge.CommandNotFoundException;
+import net.minecraft.util.Formatting;
 
 import java.util.*;
 
@@ -52,4 +53,10 @@ public class Configs {
 
     @Config(comment = "This is a mysterious object")
     public static Object exampleComment = null;
+
+    @Config(getter = @Config.Getter("customGetter"))
+    public static Formatting exampleCustomGetter = Formatting.GREEN;
+    public static String customGetter() {
+        return exampleCustomGetter.toString() + exampleCustomGetter.name() + Formatting.RESET;
+    }
 }

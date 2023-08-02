@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "legacybetterconfig",
   "version": "${version}",
-  "name": "LegacyBetterConfig",
+  "name": "Legacy BetterConfig",
   "description": "A very powerful and easy to use command based configuration library for servers and clients.",
   "authors": [
     "Crosby"
