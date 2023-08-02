@@ -1,6 +1,7 @@
 plugins {
 	id "fabric-loom" version "1.3-SNAPSHOT"
 	id "legacy-looming" version "1.3-SNAPSHOT"
+	id "maven-publish"
 }
 
 version = project.mod_version
@@ -54,5 +55,18 @@ java {
 jar {
 	from("LICENSE") {
 		rename {"${it}_${project.archivesBaseName}"}
+	}
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			artifactId project.archivesBaseName
+			from components.java
+		}
+	}
+
+	repositories {
+		mavenLocal()
 	}
 }
