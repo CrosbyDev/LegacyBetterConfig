@@ -11,7 +11,7 @@
     "xpple"
   ],
   "contact": {
-    "sources": "https://github.com/RacoonDog/LegacyBetterConfig/"
+    "sources": "https://github.com/LegacyHypixel/LegacyBetterConfig/"
   },
   "license": "LGPL-3.0-or-later",
   "icon": "assets/betterconfig/icon.png",
@@ -31,7 +31,8 @@
     "fabricloader": ">=0.14.17",
     "minecraft": "1.8.9",
     "java": ">=8",
-    "legacy-fabric-api": "*"
+    "legacy-fabric-command-api-v1": "*",
+    "legacy-fabric-command-api-v2": "*"
   },
   "custom": {
     "modmenu": {
