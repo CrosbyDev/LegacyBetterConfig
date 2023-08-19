@@ -39,12 +39,12 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
                 Config.Setter setter = annotation.setter();
                 Class<?> type = setter.type() == Config.EMPTY.class ? modConfig.getType(config) : setter.type();
                 Function<Text, CommandElement> argumentFactory = modConfig.getArgument(type);
-                if (type.isEnum()) {
+                if (argumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> set(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "set");
+                } else if (type.isEnum()) {
                     //noinspection rawtypes, unchecked
                     CommandSpec subCommand = CommandSpec.builder().arguments(GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) type)).executor((source, args) -> set(source, modConfig, config, args.requireOne("value"))).build();
-                    literals.get(config).child(subCommand, "set");
-                } else if (argumentFactory != null) {
-                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> set(source, modConfig, config, args.requireOne("value"))).build();
                     literals.get(config).child(subCommand, "set");
                 }
             });
@@ -53,12 +53,12 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
                 Config.Adder adder = annotation.adder();
                 Class<?> type = adder.type() == Config.EMPTY.class ? (Class<?>) modConfig.getParameterTypes(config)[0] : adder.type();
                 Function<Text, CommandElement> argumentFactory = modConfig.getArgument(type);
-                if (type.isEnum()) {
+                if (argumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> add(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "add");
+                } else if (type.isEnum()) {
                     //noinspection rawtypes, unchecked
                     CommandSpec subCommand = CommandSpec.builder().arguments(GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) type)).executor((source, args) -> add(source, modConfig, config, args.requireOne("value"))).build();
-                    literals.get(config).child(subCommand, "add");
-                } else if (argumentFactory != null) {
-                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> add(source, modConfig, config, args.requireOne("value"))).build();
                     literals.get(config).child(subCommand, "add");
                 }
             });
@@ -70,24 +70,24 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
                 CommandElement keyArgument;
                 CheckedFunction<CommandContext, ?, CommandNotFoundException> getKey;
                 Function<Text, CommandElement> keyArgumentFactory = modConfig.getArgument(keyType);
-                if (keyType.isEnum()) {
+                if (keyArgumentFactory != null) {
+                    keyArgument = keyArgumentFactory.apply(new LiteralText("key"));
+                    getKey = args -> args.requireOne("key");
+                } else if (keyType.isEnum()) {
                     //noinspection rawtypes, unchecked
                     keyArgument = GenericArguments.enumValue(new LiteralText("key"), (Class<? extends Enum>) keyType);
-                    getKey = args -> args.requireOne("key");
-                } else if (keyArgumentFactory != null) {
-                    keyArgument = keyArgumentFactory.apply(new LiteralText("key"));
                     getKey = args -> args.requireOne("key");
                 } else {
                     return;
                 }
                 Class<?> valueType = putter.valueType() == Config.EMPTY.class ? (Class<?>) types[1] : putter.valueType();
                 Function<Text, CommandElement> valueArgumentFactory = modConfig.getArgument(valueType);
-                if (valueType.isEnum()) {
+                if (valueArgumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(keyArgument, valueArgumentFactory.apply(new LiteralText("value"))).executor((source, args) -> put(source, modConfig, config, getKey.apply(args), args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "put");
+                } else if (valueType.isEnum()) {
                     //noinspection rawtypes, unchecked
                     CommandSpec subCommand = CommandSpec.builder().arguments(keyArgument, GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) valueType)).executor((source, args) -> put(source, modConfig, config, getKey.apply(args), args.requireOne("value"))).build();
-                    literals.get(config).child(subCommand, "put");
-                } else if (valueArgumentFactory != null) {
-                    CommandSpec subCommand = CommandSpec.builder().arguments(keyArgument, valueArgumentFactory.apply(new LiteralText("value"))).executor((source, args) -> put(source, modConfig, config, getKey.apply(args), args.requireOne("value"))).build();
                     literals.get(config).child(subCommand, "put");
                 }
             });
@@ -96,12 +96,12 @@ public abstract class ConfigCommandHelper<S extends PermissibleCommandSource>  {
                 Config.Remover remover = annotation.remover();
                 Class<?> type = remover.type() == Config.EMPTY.class ? (Class<?>) modConfig.getParameterTypes(config)[0] : remover.type();
                 Function<Text, CommandElement> argumentFactory = modConfig.getArgument(type);
-                if (type.isEnum()) {
+                if (argumentFactory != null) {
+                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> remove(source, modConfig, config, args.requireOne("value"))).build();
+                    literals.get(config).child(subCommand, "remove");
+                } else if (type.isEnum()) {
                     //noinspection rawtypes, unchecked
                     CommandSpec subCommand = CommandSpec.builder().arguments(GenericArguments.enumValue(new LiteralText("value"), (Class<? extends Enum>) type)).executor((source, args) -> remove(source, modConfig, config, args.requireOne("value"))).build();
-                    literals.get(config).child(subCommand, "remove");
-                } else if (argumentFactory != null) {
-                    CommandSpec subCommand = CommandSpec.builder().arguments(argumentFactory.apply(new LiteralText("value"))).executor((source, args) -> remove(source, modConfig, config, args.requireOne("value"))).build();
                     literals.get(config).child(subCommand, "remove");
                 }
             });
