@@ -83,9 +83,12 @@ public class ModConfigImpl implements ModConfig {
         return MOD_PATH.resolve(this.modId).resolve("config.json");
     }
 
-    public Object getRaw(String config) {
+    @Override
+    public Object getRawValue(String config) {
         try {
-            return this.configsClass.getDeclaredField(config).get(null);
+            Field field = this.configsClass.getDeclaredField(config);
+            field.setAccessible(true);
+            return field.get(null);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
@@ -197,7 +200,7 @@ public class ModConfigImpl implements ModConfig {
                 if (this.getAnnotations().get(config).temporary()) {
                     return;
                 }
-                Object value = this.getRaw(config);
+                Object value = this.getRawValue(config);
                 root.add(config, this.gson.toJsonTree(value));
             });
             writer.write(this.gson.toJson(root));
